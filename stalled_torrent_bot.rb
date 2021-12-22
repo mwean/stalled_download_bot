@@ -97,4 +97,10 @@ class StalledTorrentBot
   end
 end
 
-StalledTorrentBot.new.run
+check_interval = ENV.fetch("SLEEP_MINUTES").to_i * 60
+puts "Starting loop with interval of #{ENV.fetch('SLEEP_MINUTES')} minutes"
+
+loop do
+  StalledTorrentBot.new.run
+  sleep check_interval
+end
