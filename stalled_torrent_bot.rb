@@ -24,10 +24,16 @@ class StalledTorrentBot
     puts "Running at #{Time.now.strftime('%D %H:%M:%S')}"
 
     stalled_downloads.each do |download|
+      hours_old = (Time.now - Time.at(download["added_on"])) / 60 / 60
       stalled_time = (Time.now - Time.at(download["last_activity"])) / 60 / 60
 
-      if stalled_time < 24
-        puts "Skipping #{download['name']} - stalled #{stalled_time.round(1)} hours"
+      if hours_old < 24
+        puts "Skipping #{download['name']} - only #{hours_old.round(1)} hours old"
+        next
+      end
+
+      if download["availability"] >= 1 && stalled_time < 12
+        puts "Skipping #{download['name']} - 100% available"
         next
       end
 
@@ -81,8 +87,8 @@ class StalledTorrentBot
     )
   end
 
-  def queue_id(kind, hash)
-    record = queue(kind).find { |entry| entry["downloadId"].downcase == hash.downcase }
+  def queue_id(kind, download)
+    record = queue(kind).find { |entry| entry["downloadId"].downcase == download["hash"].downcase }
 
     raise "No record found for #{hash}" if record.nil?
 
@@ -90,7 +96,7 @@ class StalledTorrentBot
   end
 
   def queue(kind)
-    @queue[kind] ||= HTTParty.get(
+    @queues[kind] ||= HTTParty.get(
       "http://#{kind}:#{CONFIG[kind][:port]}/api/v3/queue",
       headers: { "X-Api-Key": CONFIG[kind][:api_key] }
     )["records"]
@@ -103,4 +109,6 @@ puts "Starting loop with interval of #{ENV.fetch('SLEEP_MINUTES')} minutes"
 loop do
   StalledTorrentBot.new.run
   sleep check_interval
+rescue SocketError
+  sleep 30
 end
