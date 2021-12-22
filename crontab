@@ -1,0 +1,1 @@
+0 * * * * root ruby stalled_torrent_bot.rb >> /var/log/cron.log
